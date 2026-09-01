@@ -1,0 +1,2 @@
+"""Bilingual RAG MVP service."""
+

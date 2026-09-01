@@ -1,0 +1,16 @@
+TECHNICAL SPECIFICATION: DOCUMENT QA SERVICE
+
+API
+POST /qa accepts query, session_id, and optional language. The maximum query length is 2,000 characters. A successful response contains answer, sources, refused, refusal_reason, request_id, and latency_ms.
+
+PERFORMANCE
+The service must complete at least 90 percent of QA requests within 10 seconds and support five concurrent requests on a single instance. Retrieval and generation timings are recorded separately.
+
+RETRIEVAL
+Supported modes are vector_only and hybrid. The reranker is controlled by configuration and may be enabled or disabled without changing code. The default retrieval depth is ten chunks; the reranker returns the top five.
+
+CACHE
+Cache keys include query fingerprint, corpus version, retrieval configuration, prompt version, and model version. Unsafe requests, responses containing unredacted PII, and provider failures are never cached.
+
+技术说明
+问答接口必须记录请求标识、检索耗时、生成耗时、令牌用量、缓存命中情况和拒答原因。检索模式和重排序器必须通过配置切换，不得修改业务代码。

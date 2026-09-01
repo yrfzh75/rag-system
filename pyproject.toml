@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bilingual-rag-mvp"
+version = "0.1.0"
+description = "A minimal foundation for a bilingual RAG question-answering service."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "pillow>=11,<13",
+  "pydantic-settings>=2.7,<3",
+  "pymupdf>=1.25,<2",
+  "pytesseract>=0.3.13,<1",
+  "python-docx>=1.1,<2",
+  "qdrant-client[fastembed]>=1.13,<2",
+  "uvicorn[standard]>=0.34,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28,<1",
+  "pytest>=8.3,<9",
+  "ruff>=0.9,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rag_mvp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[project.scripts]
+rag-ingest = "rag_mvp.ingestion.cli:main"
