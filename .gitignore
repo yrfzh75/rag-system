@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.env
+.pytest_cache/
+.ruff_cache/
+.venv/
+.tools/
+.ocr-env/
+cache/
+dist/
+build/
+data/qdrant/
+data/models/
+artifacts/
+:memory:.ses
