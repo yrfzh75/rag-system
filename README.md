@@ -199,6 +199,52 @@ Optional request fields are `top_k` (1–20, default 5) and `score_threshold` (-
 0.3). The response contains retrieved evidence only: chunk text, similarity score, source file,
 page number, language, and extraction method.
 
+### Retrieval modes and evaluation
+
+Retrieval behavior is configuration-driven and does not require a code change:
+
+```dotenv
+RETRIEVAL_MODE=hybrid
+RETRIEVAL_CANDIDATE_K=10
+RETRIEVAL_RERANKER_ENABLED=false
+```
+
+- `vector_only` uses multilingual dense embeddings and Qdrant cosine search.
+- `hybrid` combines dense results with an in-memory bilingual BM25 index using reciprocal-rank
+  fusion.
+- Enabling the reranker applies a deterministic bilingual lexical-overlap refinement to the fused
+  candidates. It requires no additional model download.
+
+Run the reproducible three-way comparison with:
+
+```bash
+source .venv/bin/activate
+rag-evaluate \
+  --dataset evals/retrieval_cases.json \
+  --output evals/reports/retrieval_baseline \
+  --top-k 3
+```
+
+The evaluator compares vector-only, hybrid, and hybrid+rerank using Hit@k, MRR, rank-aware context
+precision, out-of-scope refusal accuracy, and p50/p95 retrieval latency. It writes JSON details, a
+CSV summary, and a Markdown report. The included 12-case dataset covers English, Chinese, OCR,
+compliance, architecture, and out-of-scope queries.
+
+Metric definitions:
+
+- **Hit@k:** fraction of answerable queries with an expected source in the first `k` results.
+- **MRR:** mean reciprocal rank of the first expected source.
+- **Context precision:** average precision at the ranks containing expected sources, averaged over
+  answerable queries; this rewards placing relevant context before irrelevant context.
+- **Refusal accuracy:** fraction of labeled out-of-scope queries that return no context above the
+  confidence threshold.
+- **p50/p95 latency:** median and 95th-percentile local retrieval time, excluding generation.
+
+The current local result recommends hybrid without reranking: both hybrid configurations improved
+Hit@3 and context precision from `0.90` to `1.00` and retained `1.00` refusal accuracy, while plain
+hybrid was slightly faster in this run. Reranking remains configurable for evaluation on a larger
+corpus. See `evals/reports/retrieval_baseline/report.md` for the comparison and limitations.
+
 ## Test grounded question answering
 
 The `POST /qa` endpoint connects vector retrieval to a free local model served by Ollama. It

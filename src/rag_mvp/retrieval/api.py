@@ -8,13 +8,13 @@ from rag_mvp.config import get_settings
 from rag_mvp.ingestion.embedding import FastEmbedder
 from rag_mvp.ingestion.store import QdrantChunkStore
 from rag_mvp.retrieval.models import RetrievalRequest, RetrievalResponse
-from rag_mvp.retrieval.service import VectorRetriever
+from rag_mvp.retrieval.service import ConfigurableRetriever
 
 router = APIRouter(prefix="/retrieval", tags=["retrieval"])
 
 
 @lru_cache
-def get_retriever() -> VectorRetriever:
+def get_retriever() -> ConfigurableRetriever:
     """Build the local retrieval dependencies once, on the first query."""
     settings = get_settings()
     embedder = FastEmbedder(
@@ -26,23 +26,28 @@ def get_retriever() -> VectorRetriever:
         collection=settings.ingest_collection,
         vector_size=embedder.dimension,
     )
-    return VectorRetriever(
+    return ConfigurableRetriever(
         embedder=embedder,
         store=store,
         default_top_k=settings.retrieval_top_k,
         default_score_threshold=settings.retrieval_score_threshold,
+        default_mode=settings.retrieval_mode,
+        candidate_k=settings.retrieval_candidate_k,
+        reranker_enabled=settings.retrieval_reranker_enabled,
     )
 
 
 @router.post("/search", response_model=RetrievalResponse)
 def search(
     request: RetrievalRequest,
-    retriever: Annotated[VectorRetriever, Depends(get_retriever)],
+    retriever: Annotated[ConfigurableRetriever, Depends(get_retriever)],
 ) -> RetrievalResponse:
     results = retriever.retrieve(
         request.query,
         top_k=request.top_k,
         score_threshold=request.score_threshold,
+        mode=request.mode,
+        reranker_enabled=request.reranker_enabled,
     )
     return RetrievalResponse(
         query=request.query,

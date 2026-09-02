@@ -11,10 +11,14 @@ class FakeRetriever:
         *,
         top_k: int | None = None,
         score_threshold: float | None = None,
+        mode: str | None = None,
+        reranker_enabled: bool | None = None,
     ) -> list[dict[str, object]]:
         assert query == "How much parental leave is available?"
         assert top_k == 2
         assert score_threshold is None
+        assert mode is None
+        assert reranker_enabled is None
         return [
             {
                 "chunk_id": "chunk-1",

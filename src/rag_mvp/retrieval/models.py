@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -5,6 +7,8 @@ class RetrievalRequest(BaseModel):
     query: str = Field(min_length=1, max_length=2000)
     top_k: int | None = Field(default=None, ge=1, le=20)
     score_threshold: float | None = Field(default=None, ge=-1.0, le=1.0)
+    mode: Literal["vector_only", "hybrid"] | None = None
+    reranker_enabled: bool | None = None
 
 
 class RetrievalHit(BaseModel):

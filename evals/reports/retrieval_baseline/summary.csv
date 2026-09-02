@@ -1,0 +1,4 @@
+name,mode,reranker_enabled,hit_rate_at_k,mrr,context_precision,refusal_accuracy,latency_p50_ms,latency_p95_ms
+vector_only,vector_only,False,0.9,0.9,0.9,1.0,2.553,4.211
+hybrid,hybrid,False,1.0,1.0,1.0,1.0,2.362,3.898
+hybrid_rerank,hybrid,True,1.0,1.0,1.0,1.0,2.464,2.759

@@ -79,5 +79,21 @@ class QdrantChunkStore:
         )
         return [{"score": float(point.score), **(point.payload or {})} for point in response.points]
 
+    def list_chunks(self) -> list[dict[str, object]]:
+        """Return all stored chunk payloads for local lexical indexing."""
+        chunks: list[dict[str, object]] = []
+        offset = None
+        while True:
+            points, offset = self.client.scroll(
+                collection_name=self.collection,
+                limit=256,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+            chunks.extend(dict(point.payload or {}) for point in points)
+            if offset is None:
+                return chunks
+
     def close(self) -> None:
         self.client.close()
