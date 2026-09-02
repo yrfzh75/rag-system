@@ -199,6 +199,71 @@ Optional request fields are `top_k` (1–20, default 5) and `score_threshold` (-
 0.3). The response contains retrieved evidence only: chunk text, similarity score, source file,
 page number, language, and extraction method.
 
+## Test grounded question answering
+
+The `POST /qa` endpoint connects vector retrieval to a free local model served by Ollama. It
+answers only from retrieved context, cites numbered passages, refuses before calling the LLM when
+no context passes the retrieval threshold, and reports model, token usage, and
+retrieval/generation timings.
+
+Install Ollama, start it, and download the bilingual Qwen3 model once:
+
+```bash
+ollama pull qwen3:4b-instruct-2507-q4_K_M
+```
+
+Configure `.env` for local generation with no per-call API charge:
+
+```dotenv
+LLM_MODEL=qwen3:4b-instruct-2507-q4_K_M
+LLM_MAX_OUTPUT_TOKENS=500
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_TIMEOUT_SECONDS=120
+```
+
+Ollama must be running while the RAG API handles `/qa` requests. Local generation avoids provider
+charges, but uses the Mac's CPU, GPU, memory, and electricity and may be slower or less accurate
+than a hosted model. The service uses the dedicated non-thinking Instruct model and also sends
+`think: false` to prevent reasoning traces from appearing in answers.
+
+Start the API:
+
+```bash
+source .venv/bin/activate
+uvicorn rag_mvp.main:app --reload
+```
+
+In a second Terminal, ask a grounded question:
+
+```bash
+curl -s http://127.0.0.1:8000/qa \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"How many weeks of parental leave are available?","top_k":3}' \
+  | python3 -m json.tool
+```
+
+The answer should state sixteen weeks and cite `[1]`; the first source should be
+`employee_handbook.md`. Automated tests use fake retrieval and Ollama clients, so
+`python -m pytest -q` does not require Ollama to be running.
+
+### Why the MVP uses a free local model
+
+The MVP uses the pinned `qwen3:4b-instruct-2507-q4_K_M` model through Ollama because:
+
+- **Zero API cost:** local inference has **$0 API cost per 1,000 calls**, which enables repeated
+  development and evaluation without consuming a hosted-model budget.
+- **Privacy:** retrieved internal document text remains on the developer's machine instead of being
+  sent to an external model provider.
+- **Bilingual support:** Qwen3 supports the English and Chinese corpus used by this project.
+- **Practical local size:** the quantized 4B model is small enough for MVP development on a modern
+  Mac while still producing grounded answers in roughly one second for the included sample corpus.
+- **Reproducibility:** the full model tag is pinned so the shorter `qwen3:4b` alias cannot silently
+  change to a different or thinking-only build.
+
+The trade-offs are local CPU/GPU and memory usage, machine-dependent latency, and potentially lower
+answer quality than larger hosted models. The service records model name, latency, and token usage
+so this choice can be evaluated quantitatively and reconsidered for production.
+
 ## Planned milestones
 
 1. Document ingestion and metadata-preserving chunking

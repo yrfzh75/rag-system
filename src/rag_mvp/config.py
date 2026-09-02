@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     ingest_ocr_min_text_chars: int = 40
     retrieval_top_k: int = 5
     retrieval_score_threshold: float = 0.3
+    llm_model: str = "qwen3:4b-instruct-2507-q4_K_M"
+    llm_max_output_tokens: int = 500
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_timeout_seconds: float = 120.0
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
