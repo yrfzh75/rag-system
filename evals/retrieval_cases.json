@@ -1,0 +1,14 @@
+[
+  {"case_id":"en_parental_leave","language":"en","query":"How many weeks of parental leave are available?","expected_sources":["employee_handbook.md"]},
+  {"case_id":"zh_parental_leave","language":"zh","query":"员工有多少周育儿假？","expected_sources":["employee_handbook.md"]},
+  {"case_id":"en_remote_work","language":"en","query":"How many days per week may employees work remotely?","expected_sources":["employee_handbook.md"]},
+  {"case_id":"zh_data_exposure","language":"zh","query":"疑似数据泄露必须在多长时间内报告？","expected_sources":["employee_handbook.md"]},
+  {"case_id":"en_latency_target","language":"en","query":"What percentage of QA requests must finish within ten seconds?","expected_sources":["technical_specifications.txt"]},
+  {"case_id":"zh_retrieval_config","language":"zh","query":"检索模式和重排序器如何切换？","expected_sources":["technical_specifications.txt"]},
+  {"case_id":"en_pii_logs","language":"en","query":"Which personal identifiers must not appear in logs?","expected_sources":["compliance_guide.docx"]},
+  {"case_id":"en_retention","language":"en","query":"When should customer export files be deleted?","expected_sources":["compliance_guide.docx"]},
+  {"case_id":"en_ocr","language":"en","query":"What should I do if a company laptop is lost or stolen?","expected_sources":["scanned_security_notice.pdf"]},
+  {"case_id":"en_architecture","language":"en","query":"Which component selects vector-only or hybrid search?","expected_sources":["architecture_overview.pdf"]},
+  {"case_id":"out_weather","language":"en","query":"What will the weather be tomorrow?","expected_sources":[]},
+  {"case_id":"out_recipe","language":"en","query":"How do I bake sourdough bread?","expected_sources":[]}
+]
