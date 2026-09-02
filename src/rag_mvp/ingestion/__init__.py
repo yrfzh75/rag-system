@@ -3,4 +3,3 @@
 from rag_mvp.ingestion.pipeline import IngestionPipeline
 
 __all__ = ["IngestionPipeline"]
-

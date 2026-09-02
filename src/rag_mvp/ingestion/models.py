@@ -78,4 +78,3 @@ class IngestionReport:
             "ocr_pages": self.ocr_pages,
             "errors": self.errors,
         }
-

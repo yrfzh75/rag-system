@@ -45,7 +45,11 @@ class IngestionPipeline:
                 report.failed_files += 1
                 report.errors.append({"source_path": str(path), "error": str(exc)})
                 self.progress(
-                    {"event": "ingestion.document_failed", "source_path": str(path), "error": str(exc)}
+                    {
+                        "event": "ingestion.document_failed",
+                        "source_path": str(path),
+                        "error": str(exc),
+                    }
                 )
         return report
 

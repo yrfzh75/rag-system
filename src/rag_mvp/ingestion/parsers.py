@@ -114,11 +114,12 @@ class DocumentParser:
             raise DocumentParseError("DOCX support requires the 'python-docx' package") from exc
 
         document = DocxDocument(path)
-        blocks = [paragraph.text.strip() for paragraph in document.paragraphs if paragraph.text.strip()]
+        blocks = [
+            paragraph.text.strip() for paragraph in document.paragraphs if paragraph.text.strip()
+        ]
         for table in document.tables:
             for row in table.rows:
                 cells = [cell.text.strip() for cell in row.cells]
                 if any(cells):
                     blocks.append("\t".join(cells))
         return [SourcePage("\n\n".join(blocks), None, "native")]
-

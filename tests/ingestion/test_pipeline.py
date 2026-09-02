@@ -46,4 +46,3 @@ def test_pipeline_continues_after_a_bad_document(tmp_path: Path) -> None:
         "ingestion.document_completed",
         "ingestion.document_failed",
     }
-
