@@ -17,4 +17,3 @@ def detect_language(text: str) -> str:
     if cjk_ratio <= 0.10:
         return "en"
     return "mixed"
-

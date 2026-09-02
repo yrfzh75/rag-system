@@ -34,3 +34,19 @@ def test_replace_document_removes_old_chunks(tmp_path: Path) -> None:
     finally:
         store.close()
 
+
+def test_search_returns_ranked_payloads(tmp_path: Path) -> None:
+    store = QdrantChunkStore(path=tmp_path / "qdrant", collection="test", vector_size=3)
+    try:
+        first = make_chunk("0ed8d4ed-f63e-45e4-a70b-8dbca95fe7f4", "doc-1", "parental leave")
+        second = make_chunk("826e6ce7-f11c-4635-82d4-3b3d68ddeaea", "doc-2", "API latency")
+        store.replace_document([first], [[1.0, 0.0, 0.0]])
+        store.replace_document([second], [[0.0, 1.0, 0.0]])
+
+        results = store.search([1.0, 0.0, 0.0], top_k=1, score_threshold=0.5)
+
+        assert len(results) == 1
+        assert results[0]["text"] == "parental leave"
+        assert results[0]["score"] == 1.0
+    finally:
+        store.close()

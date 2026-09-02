@@ -162,6 +162,43 @@ file type, page number when available, detected language, extraction method (`na
 chunk index, and original chunk text. This metadata supports citations, incremental replacement,
 language analysis, and ingestion diagnosis in later milestones.
 
+## Test vector retrieval
+
+The retrieval-only API embeds a user query with the same multilingual model used for ingestion and
+returns ranked Qdrant chunks with scores and source metadata. It does not call an LLM or generate an
+answer, which allows retrieval quality to be tested independently.
+
+Start the API from the repository root:
+
+```bash
+source .venv/bin/activate
+uvicorn rag_mvp.main:app --reload
+```
+
+In a second Terminal window, submit an English query:
+
+```bash
+curl -s http://127.0.0.1:8000/retrieval/search \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"How many weeks of parental leave are available?","top_k":3}' \
+  | python -m json.tool
+```
+
+The response should return `employee_handbook.md` as the highest-ranked source and include the
+passage stating that eligible employees receive sixteen weeks of paid parental leave. A Chinese
+query can be tested with:
+
+```bash
+curl -s http://127.0.0.1:8000/retrieval/search \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"员工有多少周育儿假？","top_k":3}' \
+  | python -m json.tool
+```
+
+Optional request fields are `top_k` (1–20, default 5) and `score_threshold` (-1.0–1.0, default
+0.3). The response contains retrieved evidence only: chunk text, similarity score, source file,
+page number, language, and extraction method.
+
 ## Planned milestones
 
 1. Document ingestion and metadata-preserving chunking

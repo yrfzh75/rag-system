@@ -38,4 +38,3 @@ def test_chunk_ids_are_deterministic() -> None:
     assert [item.chunk_id for item in chunker.chunk(document)] == [
         item.chunk_id for item in chunker.chunk(document)
     ]
-

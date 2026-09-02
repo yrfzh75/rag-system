@@ -48,7 +48,9 @@ def test_parses_native_pdf_pages(tmp_path: Path) -> None:
     assert "service architecture" in parsed.pages[0].text
 
 
-def test_uses_ocr_fallback_for_text_poor_pdf(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_uses_ocr_fallback_for_text_poor_pdf(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     source = tmp_path / "scan.pdf"
     document = pymupdf.open()
     document.new_page()

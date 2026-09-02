@@ -26,11 +26,7 @@ class FastEmbedder:
         cache_dir.mkdir(parents=True, exist_ok=True)
         self._model = TextEmbedding(model_name=model_name, cache_dir=str(cache_dir))
         model_info = next(
-            (
-                item
-                for item in TextEmbedding.list_supported_models()
-                if item["model"] == model_name
-            ),
+            (item for item in TextEmbedding.list_supported_models() if item["model"] == model_name),
             None,
         )
         if model_info is None:

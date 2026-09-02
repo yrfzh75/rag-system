@@ -61,6 +61,23 @@ class QdrantChunkStore:
             wait=True,
         )
 
+    def search(
+        self,
+        vector: list[float],
+        *,
+        top_k: int,
+        score_threshold: float | None = None,
+    ) -> list[dict[str, object]]:
+        """Return the highest-scoring chunk payloads for one dense query vector."""
+        response = self.client.query_points(
+            collection_name=self.collection,
+            query=vector,
+            limit=top_k,
+            score_threshold=score_threshold,
+            with_payload=True,
+            with_vectors=False,
+        )
+        return [{"score": float(point.score), **(point.payload or {})} for point in response.points]
+
     def close(self) -> None:
         self.client.close()
-
