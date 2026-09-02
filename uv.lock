@@ -45,6 +45,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "pillow" },
     { name = "pydantic-settings" },
     { name = "pymupdf" },
@@ -56,7 +57,6 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -64,7 +64,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115,<1" },
-    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.28,<1" },
+    { name = "httpx", specifier = ">=0.28,<1" },
     { name = "pillow", specifier = ">=11,<13" },
     { name = "pydantic-settings", specifier = ">=2.7,<3" },
     { name = "pymupdf", specifier = ">=1.25,<2" },
