@@ -23,9 +23,15 @@ class Settings(BaseSettings):
     retrieval_candidate_k: int = 10
     retrieval_reranker_enabled: bool = False
     llm_model: str = "qwen3:4b-instruct-2507-q4_K_M"
-    llm_max_output_tokens: int = 500
+    llm_max_output_tokens: int = 256
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_timeout_seconds: float = 120.0
+    qa_cache_enabled: bool = True
+    qa_cache_ttl_seconds: float = 300.0
+    qa_cache_max_entries: int = 256
+    qa_history_max_turns: int = 3
+    qa_log_path: str = "./artifacts/qa_events.jsonl"
+    qa_grounding_min_support: float = 0.5
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

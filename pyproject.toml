@@ -39,3 +39,6 @@ target-version = "py311"
 [project.scripts]
 rag-ingest = "rag_mvp.ingestion.cli:main"
 rag-evaluate = "rag_mvp.evaluation.cli:main"
+rag-evaluate-qa = "rag_mvp.evaluation.qa:main"
+rag-load-test = "rag_mvp.evaluation.load:main"
+rag-ops-report = "rag_mvp.evaluation.operations:main"

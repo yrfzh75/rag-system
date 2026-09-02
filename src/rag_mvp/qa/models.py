@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 class QARequest(BaseModel):
     query: str = Field(min_length=1, max_length=2000)
     top_k: int | None = Field(default=None, ge=1, le=20)
+    session_id: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 class SourceCitation(BaseModel):
@@ -13,6 +14,7 @@ class SourceCitation(BaseModel):
     page_number: int | None
     chunk_id: str
     score: float
+    text: str | None = None
 
 
 class TokenUsage(BaseModel):
@@ -27,6 +29,11 @@ class QAResponse(BaseModel):
     refused: bool
     refusal_reason: str | None
     request_id: str
+    trace_id: str
+    session_id: str | None = None
+    cache_hit: bool = False
+    pii_redacted: bool = False
+    grounding_score: float | None = None
     model: str | None
     retrieval_ms: float
     generation_ms: float

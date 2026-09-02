@@ -1,0 +1,644 @@
+{
+  "dataset_size": 12,
+  "top_k": 3,
+  "configurations": [
+    {
+      "name": "vector_only",
+      "mode": "vector_only",
+      "reranker_enabled": false,
+      "hit_rate_at_k": 0.9,
+      "mrr": 0.9,
+      "context_precision": 0.9,
+      "refusal_accuracy": 1.0,
+      "latency_p50_ms": 2.416,
+      "latency_p95_ms": 4.483,
+      "cases": [
+        {
+          "case_id": "en_parental_leave",
+          "language": "en",
+          "query": "How many weeks of parental leave are available?",
+          "expected_sources": [
+            "employee_handbook.md"
+          ],
+          "returned_sources": [
+            "employee_handbook.md"
+          ],
+          "latency_ms": 4.483,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "zh_parental_leave",
+          "language": "zh",
+          "query": "员工有多少周育儿假？",
+          "expected_sources": [
+            "employee_handbook.md"
+          ],
+          "returned_sources": [
+            "employee_handbook.md",
+            "technical_specifications.txt"
+          ],
+          "latency_ms": 2.094,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_remote_work",
+          "language": "en",
+          "query": "How many days per week may employees work remotely?",
+          "expected_sources": [
+            "employee_handbook.md"
+          ],
+          "returned_sources": [
+            "employee_handbook.md",
+            "employee_handbook.md",
+            "compliance_guide.docx"
+          ],
+          "latency_ms": 2.373,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "zh_data_exposure",
+          "language": "zh",
+          "query": "疑似数据泄露必须在多长时间内报告？",
+          "expected_sources": [
+            "employee_handbook.md"
+          ],
+          "returned_sources": [
+            "employee_handbook.md",
+            "compliance_guide.docx",
+            "technical_specifications.txt"
+          ],
+          "latency_ms": 2.279,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_latency_target",
+          "language": "en",
+          "query": "What percentage of QA requests must finish within ten seconds?",
+          "expected_sources": [
+            "technical_specifications.txt"
+          ],
+          "returned_sources": [
+            "technical_specifications.txt",
+            "compliance_guide.docx",
+            "employee_handbook.md"
+          ],
+          "latency_ms": 2.526,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "zh_retrieval_config",
+          "language": "zh",
+          "query": "检索模式和重排序器如何切换？",
+          "expected_sources": [
+            "technical_specifications.txt"
+          ],
+          "returned_sources": [],
+          "latency_ms": 2.42,
+          "hit": 0.0,
+          "reciprocal_rank": 0.0,
+          "context_precision": 0.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_pii_logs",
+          "language": "en",
+          "query": "Which personal identifiers must not appear in logs?",
+          "expected_sources": [
+            "compliance_guide.docx"
+          ],
+          "returned_sources": [
+            "compliance_guide.docx",
+            "architecture_overview.pdf"
+          ],
+          "latency_ms": 2.411,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_retention",
+          "language": "en",
+          "query": "When should customer export files be deleted?",
+          "expected_sources": [
+            "compliance_guide.docx"
+          ],
+          "returned_sources": [
+            "compliance_guide.docx"
+          ],
+          "latency_ms": 2.713,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_ocr",
+          "language": "en",
+          "query": "What should I do if a company laptop is lost or stolen?",
+          "expected_sources": [
+            "scanned_security_notice.pdf"
+          ],
+          "returned_sources": [
+            "scanned_security_notice.pdf",
+            "compliance_guide.docx"
+          ],
+          "latency_ms": 3.878,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_architecture",
+          "language": "en",
+          "query": "Which component selects vector-only or hybrid search?",
+          "expected_sources": [
+            "architecture_overview.pdf"
+          ],
+          "returned_sources": [
+            "architecture_overview.pdf"
+          ],
+          "latency_ms": 3.657,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "out_weather",
+          "language": "en",
+          "query": "What will the weather be tomorrow?",
+          "expected_sources": [],
+          "returned_sources": [],
+          "latency_ms": 2.355,
+          "hit": null,
+          "reciprocal_rank": null,
+          "context_precision": null,
+          "refusal_correct": 1.0
+        },
+        {
+          "case_id": "out_recipe",
+          "language": "en",
+          "query": "How do I bake sourdough bread?",
+          "expected_sources": [],
+          "returned_sources": [],
+          "latency_ms": 2.08,
+          "hit": null,
+          "reciprocal_rank": null,
+          "context_precision": null,
+          "refusal_correct": 1.0
+        }
+      ]
+    },
+    {
+      "name": "hybrid",
+      "mode": "hybrid",
+      "reranker_enabled": false,
+      "hit_rate_at_k": 1.0,
+      "mrr": 1.0,
+      "context_precision": 1.0,
+      "refusal_accuracy": 1.0,
+      "latency_p50_ms": 2.272,
+      "latency_p95_ms": 2.548,
+      "cases": [
+        {
+          "case_id": "en_parental_leave",
+          "language": "en",
+          "query": "How many weeks of parental leave are available?",
+          "expected_sources": [
+            "employee_handbook.md"
+          ],
+          "returned_sources": [
+            "employee_handbook.md",
+            "compliance_guide.docx",
+            "employee_handbook.md"
+          ],
+          "latency_ms": 2.22,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "zh_parental_leave",
+          "language": "zh",
+          "query": "员工有多少周育儿假？",
+          "expected_sources": [
+            "employee_handbook.md"
+          ],
+          "returned_sources": [
+            "employee_handbook.md",
+            "technical_specifications.txt",
+            "compliance_guide.docx"
+          ],
+          "latency_ms": 1.987,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_remote_work",
+          "language": "en",
+          "query": "How many days per week may employees work remotely?",
+          "expected_sources": [
+            "employee_handbook.md"
+          ],
+          "returned_sources": [
+            "employee_handbook.md",
+            "compliance_guide.docx",
+            "compliance_guide.docx"
+          ],
+          "latency_ms": 2.253,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "zh_data_exposure",
+          "language": "zh",
+          "query": "疑似数据泄露必须在多长时间内报告？",
+          "expected_sources": [
+            "employee_handbook.md"
+          ],
+          "returned_sources": [
+            "employee_handbook.md",
+            "scanned_security_notice.pdf",
+            "technical_specifications.txt"
+          ],
+          "latency_ms": 2.29,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_latency_target",
+          "language": "en",
+          "query": "What percentage of QA requests must finish within ten seconds?",
+          "expected_sources": [
+            "technical_specifications.txt"
+          ],
+          "returned_sources": [
+            "technical_specifications.txt",
+            "employee_handbook.md",
+            "compliance_guide.docx"
+          ],
+          "latency_ms": 2.457,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "zh_retrieval_config",
+          "language": "zh",
+          "query": "检索模式和重排序器如何切换？",
+          "expected_sources": [
+            "technical_specifications.txt"
+          ],
+          "returned_sources": [
+            "technical_specifications.txt",
+            "scanned_security_notice.pdf",
+            "employee_handbook.md"
+          ],
+          "latency_ms": 2.444,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_pii_logs",
+          "language": "en",
+          "query": "Which personal identifiers must not appear in logs?",
+          "expected_sources": [
+            "compliance_guide.docx"
+          ],
+          "returned_sources": [
+            "compliance_guide.docx",
+            "scanned_security_notice.pdf",
+            "employee_handbook.md"
+          ],
+          "latency_ms": 2.359,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_retention",
+          "language": "en",
+          "query": "When should customer export files be deleted?",
+          "expected_sources": [
+            "compliance_guide.docx"
+          ],
+          "returned_sources": [
+            "compliance_guide.docx",
+            "employee_handbook.md",
+            "compliance_guide.docx"
+          ],
+          "latency_ms": 2.085,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_ocr",
+          "language": "en",
+          "query": "What should I do if a company laptop is lost or stolen?",
+          "expected_sources": [
+            "scanned_security_notice.pdf"
+          ],
+          "returned_sources": [
+            "scanned_security_notice.pdf",
+            "employee_handbook.md",
+            "architecture_overview.pdf"
+          ],
+          "latency_ms": 2.548,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_architecture",
+          "language": "en",
+          "query": "Which component selects vector-only or hybrid search?",
+          "expected_sources": [
+            "architecture_overview.pdf"
+          ],
+          "returned_sources": [
+            "architecture_overview.pdf",
+            "technical_specifications.txt",
+            "compliance_guide.docx"
+          ],
+          "latency_ms": 2.404,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "out_weather",
+          "language": "en",
+          "query": "What will the weather be tomorrow?",
+          "expected_sources": [],
+          "returned_sources": [],
+          "latency_ms": 1.889,
+          "hit": null,
+          "reciprocal_rank": null,
+          "context_precision": null,
+          "refusal_correct": 1.0
+        },
+        {
+          "case_id": "out_recipe",
+          "language": "en",
+          "query": "How do I bake sourdough bread?",
+          "expected_sources": [],
+          "returned_sources": [],
+          "latency_ms": 2.082,
+          "hit": null,
+          "reciprocal_rank": null,
+          "context_precision": null,
+          "refusal_correct": 1.0
+        }
+      ]
+    },
+    {
+      "name": "hybrid_rerank",
+      "mode": "hybrid",
+      "reranker_enabled": true,
+      "hit_rate_at_k": 1.0,
+      "mrr": 1.0,
+      "context_precision": 1.0,
+      "refusal_accuracy": 1.0,
+      "latency_p50_ms": 2.423,
+      "latency_p95_ms": 4.178,
+      "cases": [
+        {
+          "case_id": "en_parental_leave",
+          "language": "en",
+          "query": "How many weeks of parental leave are available?",
+          "expected_sources": [
+            "employee_handbook.md"
+          ],
+          "returned_sources": [
+            "employee_handbook.md",
+            "compliance_guide.docx",
+            "employee_handbook.md"
+          ],
+          "latency_ms": 2.402,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "zh_parental_leave",
+          "language": "zh",
+          "query": "员工有多少周育儿假？",
+          "expected_sources": [
+            "employee_handbook.md"
+          ],
+          "returned_sources": [
+            "employee_handbook.md",
+            "technical_specifications.txt",
+            "compliance_guide.docx"
+          ],
+          "latency_ms": 2.126,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_remote_work",
+          "language": "en",
+          "query": "How many days per week may employees work remotely?",
+          "expected_sources": [
+            "employee_handbook.md"
+          ],
+          "returned_sources": [
+            "employee_handbook.md",
+            "compliance_guide.docx",
+            "compliance_guide.docx"
+          ],
+          "latency_ms": 2.42,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "zh_data_exposure",
+          "language": "zh",
+          "query": "疑似数据泄露必须在多长时间内报告？",
+          "expected_sources": [
+            "employee_handbook.md"
+          ],
+          "returned_sources": [
+            "employee_handbook.md",
+            "scanned_security_notice.pdf",
+            "technical_specifications.txt"
+          ],
+          "latency_ms": 2.425,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_latency_target",
+          "language": "en",
+          "query": "What percentage of QA requests must finish within ten seconds?",
+          "expected_sources": [
+            "technical_specifications.txt"
+          ],
+          "returned_sources": [
+            "technical_specifications.txt",
+            "employee_handbook.md",
+            "compliance_guide.docx"
+          ],
+          "latency_ms": 3.968,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "zh_retrieval_config",
+          "language": "zh",
+          "query": "检索模式和重排序器如何切换？",
+          "expected_sources": [
+            "technical_specifications.txt"
+          ],
+          "returned_sources": [
+            "technical_specifications.txt",
+            "scanned_security_notice.pdf",
+            "employee_handbook.md"
+          ],
+          "latency_ms": 4.178,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_pii_logs",
+          "language": "en",
+          "query": "Which personal identifiers must not appear in logs?",
+          "expected_sources": [
+            "compliance_guide.docx"
+          ],
+          "returned_sources": [
+            "compliance_guide.docx",
+            "scanned_security_notice.pdf",
+            "employee_handbook.md"
+          ],
+          "latency_ms": 3.339,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_retention",
+          "language": "en",
+          "query": "When should customer export files be deleted?",
+          "expected_sources": [
+            "compliance_guide.docx"
+          ],
+          "returned_sources": [
+            "compliance_guide.docx",
+            "compliance_guide.docx",
+            "employee_handbook.md"
+          ],
+          "latency_ms": 2.362,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_ocr",
+          "language": "en",
+          "query": "What should I do if a company laptop is lost or stolen?",
+          "expected_sources": [
+            "scanned_security_notice.pdf"
+          ],
+          "returned_sources": [
+            "scanned_security_notice.pdf",
+            "employee_handbook.md",
+            "compliance_guide.docx"
+          ],
+          "latency_ms": 2.79,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "en_architecture",
+          "language": "en",
+          "query": "Which component selects vector-only or hybrid search?",
+          "expected_sources": [
+            "architecture_overview.pdf"
+          ],
+          "returned_sources": [
+            "architecture_overview.pdf",
+            "technical_specifications.txt",
+            "compliance_guide.docx"
+          ],
+          "latency_ms": 2.625,
+          "hit": 1.0,
+          "reciprocal_rank": 1.0,
+          "context_precision": 1.0,
+          "refusal_correct": null
+        },
+        {
+          "case_id": "out_weather",
+          "language": "en",
+          "query": "What will the weather be tomorrow?",
+          "expected_sources": [],
+          "returned_sources": [],
+          "latency_ms": 1.936,
+          "hit": null,
+          "reciprocal_rank": null,
+          "context_precision": null,
+          "refusal_correct": 1.0
+        },
+        {
+          "case_id": "out_recipe",
+          "language": "en",
+          "query": "How do I bake sourdough bread?",
+          "expected_sources": [],
+          "returned_sources": [],
+          "latency_ms": 2.129,
+          "hit": null,
+          "reciprocal_rank": null,
+          "context_precision": null,
+          "refusal_correct": 1.0
+        }
+      ]
+    }
+  ]
+}
