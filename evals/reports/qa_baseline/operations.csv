@@ -1,0 +1,2 @@
+request_count,p50_latency_ms,p95_latency_ms,token_usage,cache_hit_rate,refusal_rate,answer_compliance_rate
+32,0.14,4068.276,27698,0.46875,0.125,1.0

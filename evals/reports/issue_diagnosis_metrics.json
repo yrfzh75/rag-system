@@ -1,0 +1,16 @@
+{
+  "retrieval_quality_drop": {
+    "metric": "context_precision",
+    "before": 0.9,
+    "after": 1.0,
+    "relative_improvement": 0.1111,
+    "evidence": "evals/reports/retrieval_baseline/results.json"
+  },
+  "unsafe_override_reached_generation": {
+    "metric": "pre_generation_refusal_accuracy",
+    "before": 0.0,
+    "after": 1.0,
+    "relative_improvement": 1.0,
+    "evidence": "evals/reports/qa_baseline/results.json and tests/qa/test_service.py"
+  }
+}

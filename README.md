@@ -1,8 +1,8 @@
 # Bilingual RAG MVP
 
 This repository is the starting point for a bilingual retrieval-augmented generation service.
-The first milestone intentionally contains only a runnable API and a health check. Ingestion,
-retrieval, generation, and evaluation will be added as separate, testable vertical slices.
+It includes ingestion, configurable retrieval, local grounded generation, safety controls,
+observability, caching, and reproducible evaluation as separate, testable vertical slices.
 
 ## Ingestion design: MVP and production
 
@@ -59,7 +59,7 @@ source .venv/bin/activate
 python -m pytest -q
 ```
 
-A successful run currently ends with `11 passed`. Run the static checks separately:
+A successful run currently ends with all tests passing. Run the static checks separately:
 
 ```bash
 python -m ruff check .
@@ -262,7 +262,7 @@ Configure `.env` for local generation with no per-call API charge:
 
 ```dotenv
 LLM_MODEL=qwen3:4b-instruct-2507-q4_K_M
-LLM_MAX_OUTPUT_TOKENS=500
+LLM_MAX_OUTPUT_TOKENS=256
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 OLLAMA_TIMEOUT_SECONDS=120
 ```
@@ -310,10 +310,88 @@ The trade-offs are local CPU/GPU and memory usage, machine-dependent latency, an
 answer quality than larger hosted models. The service records model name, latency, and token usage
 so this choice can be evaluated quantitatively and reconsidered for production.
 
-## Planned milestones
+## Service hardening and multi-turn QA
+
+The `/qa` request accepts an optional `session_id`. The service keeps the last three redacted turns
+in process and uses the most recent turn to improve follow-up retrieval. This is intentionally an
+MVP store: production should move encrypted conversation state to a shared store with retention and
+deletion policies.
+
+Runtime controls include:
+
+- deterministic English/Chinese prompt-injection refusal before retrieval or generation;
+- email, phone, and US SSN redaction from model input, answer, citations, and conversation history;
+- a bounded five-minute process-local answer cache; requests containing PII and redacted answers
+  are never cached;
+- a post-generation grounding gate that validates citation IDs and context support, refusing output
+  below `QA_GROUNDING_MIN_SUPPORT`;
+- structured JSONL events containing request/trace/span IDs, retrieval/model choices, tokens,
+  grounding score, latency, cache, refusal, and PII signals without raw prompts or answers; and
+- configuration-only retrieval, reranker, model, cache, history, and logging changes through `.env`.
+
+Example multi-turn requests:
+
+```bash
+curl -s http://127.0.0.1:8000/qa -H 'Content-Type: application/json' \
+  -d '{"query":"How many weeks of parental leave are available?","session_id":"demo-1"}'
+curl -s http://127.0.0.1:8000/qa -H 'Content-Type: application/json' \
+  -d '{"query":"Who is eligible for it?","session_id":"demo-1"}'
+```
+
+### One-command validation
+
+With the virtual environment active and Ollama running:
+
+```bash
+./scripts/evaluate.sh
+```
+
+This starts an isolated cache-disabled validation API, runs unit tests, Ruff, the three retrieval
+configurations, QA quality evaluation, and a five-distinct-request/5-concurrent cold-cache load
+check. It writes the operations CSV and shuts down the temporary API automatically.
+
+The QA evaluator uses the labeled bilingual dataset in `evals/qa_cases.json` and reports:
+
+- **Faithfulness:** fraction of non-stopword answer tokens present in cited passages; target
+  `>= 0.85`. This deterministic metric is reproducible but should later be supplemented by human or
+  claim-level judging for valid paraphrases.
+- **Answer compliance:** correct refusal label, all expected facts, and citations; target `>= 0.90`
+  (stricter than the original 80% requirement).
+- **Style consistency:** same language as the question, numbered citations, and no thinking trace;
+  target `>= 0.85`.
+- **Refusal appropriateness:** correct decision for answerable, out-of-scope, and injection cases;
+  target `>= 0.90`.
+- **Performance:** at least 90% of calls at or below 10 seconds with five concurrent requests.
+
+Local Ollama has `$0` provider/API cost per 1,000 calls. Token counts are still recorded so a
+hosted replacement can calculate `(input tokens × input rate) + (output tokens × output rate)` for
+1,000 calls without changing the service contract.
+
+Generate an operational report independently with:
+
+```bash
+rag-ops-report --logs artifacts/qa_events.jsonl --output artifacts/operations.csv
+```
+
+It contains p50/p95 latency, total token usage, cache-hit rate, refusal rate, and imports the
+answer-compliance rate from the latest QA evaluation (or marks it `not_measured`). See
+`docs/log_field_dictionary.md`,
+`docs/sample_logs.jsonl`, and `evals/reports/issue_diagnosis.md` for the log contract, safe samples,
+and two before/after diagnoses with at least 10% improvement.
+
+The recorded final run in `evals/reports/qa_latest/` passes the requested thresholds:
+faithfulness `0.870`, answer compliance `1.00`, style consistency `1.00`, refusal appropriateness
+`1.00`, and 100% of the six QA cases within 10 seconds. The five-distinct-request cold-cache load
+run used five concurrent clients, had zero cache hits, and passed with p95 `6.76s`. These results
+are evidence for this sample corpus
+and machine, not a production capacity guarantee; rerun the script after any corpus, prompt, model,
+or infrastructure change.
+
+## Milestones
 
 1. Document ingestion and metadata-preserving chunking
 2. Vector retrieval with a small evaluation dataset
 3. BM25 hybrid retrieval and optional reranking
 4. Grounded answer generation, citations, and refusal behavior
-5. Bilingual, safety, latency, cost, and reliability evaluation
+5. Bilingual, safety, latency, cost, and reliability evaluation (implemented; run locally to record
+   machine-specific QA and load results)

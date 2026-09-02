@@ -6,9 +6,12 @@ from rag_mvp.qa.models import QAResponse, SourceCitation, TokenUsage
 
 
 class FakeQAService:
-    def answer(self, query: str, *, top_k: int | None = None) -> QAResponse:
+    def answer(
+        self, query: str, *, top_k: int | None = None, session_id: str | None = None
+    ) -> QAResponse:
         assert query == "How much parental leave is available?"
         assert top_k == 3
+        assert session_id == "session-1"
         return QAResponse(
             answer="Employees receive 16 weeks of paid parental leave. [1]",
             sources=[
@@ -24,6 +27,8 @@ class FakeQAService:
             refused=False,
             refusal_reason=None,
             request_id="request-1",
+            trace_id="trace-1",
+            session_id=session_id,
             model="test-model",
             retrieval_ms=5,
             generation_ms=20,
@@ -37,7 +42,11 @@ def test_qa_endpoint_returns_grounded_answer() -> None:
     try:
         response = TestClient(app).post(
             "/qa",
-            json={"query": "How much parental leave is available?", "top_k": 3},
+            json={
+                "query": "How much parental leave is available?",
+                "top_k": 3,
+                "session_id": "session-1",
+            },
         )
     finally:
         app.dependency_overrides.clear()
