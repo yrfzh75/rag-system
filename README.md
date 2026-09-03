@@ -44,34 +44,91 @@ root directory. No machine-specific paths are required.
 ### Prerequisites
 
 - Git.
-- Python 3.11 or newer. Check with `python3 --version`.
-- Ollama for local answer generation.
-- Tesseract with `eng` and `chi_sim` language data only if scanned-PDF OCR is required.
+- Python 3.11 or newer; Python 3.12 is recommended for the commands below.
+- Ollama plus the pinned Qwen3 model for local answer generation.
+- Tesseract plus `eng` and `chi_sim` language data for the complete scanned-PDF flow.
 - Approximately 3 GB of free disk space for Python dependencies, the embedding model, and the
   quantized generation model.
 
 Embedded Qdrant is included through the Python dependency; you do not need to install or run a
-separate database for this MVP.
+separate database for this MVP. Python packages do not provide the Ollama or Tesseract executables;
+they must be installed at the operating-system level.
 
-### Install the project
+### macOS fresh-clone quick start
+
+The commands below cover the complete path used to verify a clean clone. Run one block at a time so
+any missing system dependency is clear.
+
+#### 1. Install Homebrew if `brew` is unavailable
+
+Check first:
 
 ```bash
-git clone <your-fork-url>
+brew --version
+```
+
+If that prints `command not found`, install Homebrew:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+Make the newly installed command available in the current Terminal on either Apple Silicon or an
+Intel Mac:
+
+```bash
+if [[ -x /opt/homebrew/bin/brew ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+else
+  eval "$(/usr/local/bin/brew shellenv)"
+fi
+brew --version
+```
+
+Homebrew is only an installation method; it is not used by the RAG application at runtime.
+
+#### 2. Install Python and OCR dependencies
+
+```bash
+brew install python@3.12
+brew install tesseract tesseract-lang
+```
+
+Verify the exact dependencies before cloning:
+
+```bash
+python3.12 --version
+tesseract --version
+tesseract --list-langs | grep -E 'eng|chi_sim'
+```
+
+The final command must print both `eng` and `chi_sim`. The `pytesseract` Python package is only a
+wrapper and cannot perform OCR when the `tesseract` executable is missing.
+
+#### 3. Clone and install the project
+
+```bash
+git clone https://github.com/yrfzh75/rag-system.git
 cd rag-system
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
+python --version
 python -m pip install --upgrade pip
 python -m pip install -e '.[dev]'
 cp .env.example .env
 ```
 
-On Windows PowerShell, activate the environment with:
+The `python --version` output must be Python 3.11 or newer. A virtual environment keeps the Python
+version used to create it; activating an old Python 3.9 environment does not upgrade it.
+
+On Windows PowerShell, create and activate the environment with an installed Python 3.11+ version:
 
 ```powershell
+py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
 
-### Install and start the local model
+#### 4. Install and start the local model
 
 Install Ollama from [ollama.com](https://ollama.com), then download the pinned model:
 
@@ -88,38 +145,72 @@ ollama serve
 Confirm that it is available:
 
 ```bash
+ollama list
 curl -s http://127.0.0.1:11434/api/tags
 ```
 
-### Ingest the sample documents
+#### 5. Run a preflight check
 
-The repository contains five sample documents under `documents/`. To test native text extraction
-without OCR:
+From the repository root:
+
+```bash
+python --version
+python -c 'import rag_mvp; print("Python package: OK")'
+tesseract --list-langs | grep -E 'eng|chi_sim'
+ollama list | grep 'qwen3:4b-instruct-2507-q4_K_M'
+```
+
+Do not continue until Python is 3.11+, both OCR languages are listed, and the Qwen3 model appears.
+
+#### 6. Ingest all sample documents, including the scanned PDF
+
+```bash
+INGEST_OCR_ENABLED=true \
+INGEST_OCR_LANGUAGES=eng+chi_sim \
+rag-ingest ./documents
+```
+
+For the included corpus, the final event should report:
+
+```text
+"ingested_files": 5
+"failed_files": 0
+"chunks_written": 8
+"native_pages": 5
+"ocr_pages": 1
+```
+
+Run the same command a second time. Identical counts confirm idempotent replacement rather than
+duplicate chunks.
+
+#### 7. Run the complete automated validation
+
+```bash
+./scripts/evaluate.sh
+```
+
+The final load-test object should contain `"cold_cache_verified": true` and `"passes": true`.
+
+### Native-text-only ingestion
+
+If you intentionally do not want to install Tesseract, you can validate the four native-text
+documents with:
 
 ```bash
 INGEST_OCR_ENABLED=false .venv/bin/rag-ingest ./documents
 ```
 
-The scanned PDF will be reported as a failure, while the other four documents will be indexed. To
-test the complete OCR path, install Tesseract and confirm both languages are present:
-
-```bash
-tesseract --list-langs | grep -E 'eng|chi_sim'
-INGEST_OCR_ENABLED=true INGEST_OCR_LANGUAGES=eng+chi_sim \
-  .venv/bin/rag-ingest ./documents
-```
-
-For the included corpus, a successful complete run reports five ingested files, zero failures,
-eight chunks, five native pages, and one OCR page. Run the command twice: identical counts on the
-second run confirm idempotent replacement rather than duplicate storage.
+The scanned PDF will be reported as a failure because it contains no embedded text. This is
+expected, but the complete evaluation will not pass its OCR retrieval case until that PDF has been
+ingested with OCR enabled.
 
 The first run downloads the multilingual embedding model to `data/models/`. Qdrant persists the
 index under `data/qdrant/`. Because embedded Qdrant permits one owning process, stop the API before
 running ingestion or use Qdrant server in a multi-process deployment.
 
-### Run the complete automated validation
+### What the automated validation runs
 
-With Ollama running and the sample documents already ingested:
+The validation command is:
 
 ```bash
 ./scripts/evaluate.sh
@@ -146,6 +237,19 @@ Results are written to:
 - `evals/reports/qa_latest/`
 - `artifacts/operations.csv`
 - `artifacts/qa_validation_events.jsonl`
+
+### Common setup problems
+
+| Message or symptom | Cause | Fix |
+|---|---|---|
+| `repository ... does not exist` | `git clone` received `username/repository` instead of a URL, or the repository is private. | Use the complete HTTPS URL above; authenticate with GitHub first for a private repository. |
+| `requires a different Python: 3.9.6 not in >=3.11` | `.venv` was created with macOS system Python 3.9. | Deactivate it, remove `.venv`, and recreate it with `python3.12 -m venv .venv`. |
+| `brew: command not found` | Homebrew is not installed or is not in the current shell's `PATH`. | Install Homebrew and run the `shellenv` block above. |
+| `tesseract: command not found` | Installing `pytesseract` did not install the system executable. | Run `brew install tesseract tesseract-lang`. |
+| OCR reports missing `chi_sim` | Simplified Chinese language data is absent. | Install `tesseract-lang`, then recheck `tesseract --list-langs`. |
+| Scanned PDF says `No text could be extracted` | OCR was disabled for a PDF with no native text. | Set `INGEST_OCR_ENABLED=true` after installing Tesseract. |
+| Ollama connection fails | Ollama is not running or the model is missing. | Run `ollama serve` and `ollama pull qwen3:4b-instruct-2507-q4_K_M`. |
+| The prompt shows `((.venv) )` | The environment label was added twice to the shell prompt. | Cosmetic only; confirm the active interpreter with `python --version`. |
 
 ### Test the API manually
 
