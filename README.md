@@ -1,397 +1,387 @@
 # Bilingual RAG MVP
 
-This repository is the starting point for a bilingual retrieval-augmented generation service.
-It includes ingestion, configurable retrieval, local grounded generation, safety controls,
-observability, caching, and reproducible evaluation as separate, testable vertical slices.
+A multi-turn retrieval-augmented generation service for a bilingual Chinese/English internal
+knowledge base. It ingests PDF, DOCX, TXT, and Markdown documents, retrieves evidence with vector
+or hybrid search, and produces cited answers with a free local Ollama model.
 
-## Ingestion design: MVP and production
+## High-level technology stack
 
-### MVP
+```text
+Documents
+   -> Python ingestion pipeline
+      -> PyMuPDF / python-docx: document parsing
+      -> Tesseract: scanned-PDF OCR
+      -> Multilingual MiniLM: embeddings
+      -> Qdrant: vector and metadata storage
+   -> FastAPI service
+      -> vector search or vector + BM25 hybrid search
+      -> optional lexical reranking
+      -> PII, prompt-injection, and grounding controls
+      -> TTL/LRU caching and structured JSONL tracing
+      -> Ollama + Qwen3: grounded bilingual generation
+   -> JSON response with answer, citations, tokens, and timings
+```
 
-- Ingestion is a manually triggered batch command: `rag-ingest ./documents`.
-- Repeated runs are idempotent: an existing document's chunks are replaced rather than duplicated.
-- The milestone prioritizes validating parsing, OCR, chunking, embedding, metadata, and Qdrant
-  storage.
-- Automatic scheduling, event processing, and deletion reconciliation are intentionally deferred.
+- **Language and API:** Python 3.11+, FastAPI, and Uvicorn.
+- **Document processing:** PyMuPDF for PDFs, python-docx for Word documents, plain-text readers,
+  and Tesseract for scanned Chinese/English PDFs.
+- **Retrieval:** `paraphrase-multilingual-MiniLM-L12-v2` embeddings, embedded Qdrant vector
+  storage, bilingual BM25, reciprocal-rank fusion, and an optional lexical reranker.
+- **Generation:** Ollama with the pinned local `qwen3:4b-instruct-2507-q4_K_M` model.
+- **Runtime controls:** bounded in-process conversation history, TTL/LRU cache, prompt-injection
+  detection, PII redaction, grounded-answer validation, refusals, and structured tracing.
+- **Quality tooling:** Pytest, Ruff, labeled retrieval/QA datasets, concurrent load testing, and
+  JSON, CSV, and Markdown evaluation reports.
 
-### Production
+The MVP runs locally without a paid model API or separate Qdrant server. Production would normally
+replace embedded Qdrant and process-local state with shared services.
 
-- Use event-driven, incremental ingestion so only added, modified, or deleted documents are
-  processed instead of repeatedly ingesting the entire corpus.
-- Under normal load, target **95% of changed documents becoming searchable within 15 minutes**.
-  This target measures the delay for an individual change; it does not require millions of files
-  to be rescanned within 15 minutes.
-- Process urgent compliance and security changes immediately or through a higher-priority queue.
-- Use a durable queue and multiple workers to handle changes in parallel and scale with corpus size.
-- Run a separate nightly or weekly full reconciliation to detect missed events, changed files, and
-  deleted source documents. Large reconciliations and backfills may take several hours and should
-  have separate completion targets.
-- Prevent overlapping jobs and monitor queue delay, ingestion failures, processing latency, and
-  end-to-end document freshness.
+## 1. Run and test the complete flow locally
 
-## Prerequisites
+These instructions assume you forked or cloned the repository and are running commands from its
+root directory. No machine-specific paths are required.
 
-- Python 3.11 or newer
+### Prerequisites
 
-## Run locally
+- Git.
+- Python 3.11 or newer. Check with `python3 --version`.
+- Ollama for local answer generation.
+- Tesseract with `eng` and `chi_sim` language data only if scanned-PDF OCR is required.
+- Approximately 3 GB of free disk space for Python dependencies, the embedding model, and the
+  quantized generation model.
+
+Embedded Qdrant is included through the Python dependency; you do not need to install or run a
+separate database for this MVP.
+
+### Install the project
 
 ```bash
-python -m venv .venv
+git clone <your-fork-url>
+cd rag-system
+python3 -m venv .venv
 source .venv/bin/activate
-pip install -e '.[dev]'
+python -m pip install --upgrade pip
+python -m pip install -e '.[dev]'
 cp .env.example .env
-uvicorn rag_mvp.main:app --reload
 ```
 
-Open `http://127.0.0.1:8000/docs` for the generated API documentation, or check:
+On Windows PowerShell, activate the environment with:
 
-```bash
-curl http://127.0.0.1:8000/health
+```powershell
+.venv\Scripts\Activate.ps1
 ```
 
-## Run the test cases
+### Install and start the local model
 
-From the repository root, activate the virtual environment and run the automated tests:
-
-```bash
-cd /Users/yrfzh/Coding/rag-system
-source .venv/bin/activate
-python -m pytest -q
-```
-
-A successful run currently ends with all tests passing. Run the static checks separately:
-
-```bash
-python -m ruff check .
-```
-
-## Ingestion milestone
-
-The offline ingestion pipeline currently supports:
-
-- recursive discovery of PDF, DOCX, TXT, and Markdown files;
-- native PDF text extraction with reading-order sorting;
-- page-level OCR fallback for text-poor scanned PDF pages;
-- bilingual CN/EN-aware chunking that does not depend on whitespace;
-- stable document and chunk identifiers for repeatable ingestion;
-- local multilingual embeddings; and
-- idempotent replacement of each document in a persistent Qdrant collection.
-
-Put internal documents under `documents/`, then install/synchronize dependencies and run:
-
-```bash
-uv sync --extra dev
-cp .env.example .env
-uv run rag-ingest ./documents
-```
-
-If the project was installed with `pip install -e '.[dev]'` instead of `uv`, use the
-`rag-ingest` command directly as shown below.
-
-The first run downloads the configured multilingual embedding model into `data/models/`. The command emits one
-structured JSON event per document followed by an ingestion summary. If any document fails, the
-remaining documents are still processed and the command exits nonzero after printing the report.
-
-Scanned PDFs require the Tesseract executable plus the `eng` and `chi_sim` language data. Native
-PDFs do not use Tesseract. To ingest only native-text documents while OCR is unavailable, set:
-
-```dotenv
-INGEST_OCR_ENABLED=false
-```
-
-### Validate ingestion in Terminal
-
-This repository has a project-local Tesseract installation under `.tools/`. In every new Terminal
-session, activate Python and add that installation to the current shell environment:
-
-```bash
-cd /Users/yrfzh/Coding/rag-system
-source .venv/bin/activate
-export PATH="$PWD/.tools/mamba-root/envs/ocr/bin:$PATH"
-export TESSDATA_PREFIX="$PWD/.tools/mamba-root/envs/ocr/share/tessdata"
-```
-
-Confirm that Tesseract and both OCR languages are available:
-
-```bash
-which tesseract
-tesseract --list-langs | grep -E 'eng|chi_sim'
-```
-
-The first command should point inside `.tools/mamba-root/envs/ocr/bin/`, and the language check
-should print both `chi_sim` and `eng`.
-
-Run the complete ingestion flow, including OCR for scanned PDFs:
-
-```bash
-INGEST_OCR_ENABLED=true \
-INGEST_OCR_LANGUAGES=eng+chi_sim \
-rag-ingest ./documents
-```
-
-With the five included sample documents, the final JSON event should report:
-
-```json
-{
-  "event": "ingestion.completed",
-  "discovered_files": 5,
-  "ingested_files": 5,
-  "failed_files": 0,
-  "chunks_written": 8,
-  "native_pages": 5,
-  "ocr_pages": 1,
-  "errors": []
-}
-```
-
-Run the same command a second time to verify idempotent replacement. It should succeed with the
-same counts rather than creating duplicate chunks.
-
-If the scanned PDF fails with `Tesseract executable is not installed`, repeat the `PATH` and
-`TESSDATA_PREFIX` exports above in the current Terminal session. The exports do not persist when a
-new Terminal window is opened.
-
-Qdrant runs in embedded local mode and persists its collection under `data/qdrant/`; no separate
-database server is required for this milestone. Only one process should open this local database at
-a time. A Qdrant server can replace it later for multi-process deployment and load testing.
-
-### Ingestion output metadata
-
-Every stored chunk includes its stable document/chunk IDs, source path and filename, content hash,
-file type, page number when available, detected language, extraction method (`native` or `ocr`),
-chunk index, and original chunk text. This metadata supports citations, incremental replacement,
-language analysis, and ingestion diagnosis in later milestones.
-
-## Test vector retrieval
-
-The retrieval-only API embeds a user query with the same multilingual model used for ingestion and
-returns ranked Qdrant chunks with scores and source metadata. It does not call an LLM or generate an
-answer, which allows retrieval quality to be tested independently.
-
-Start the API from the repository root:
-
-```bash
-source .venv/bin/activate
-uvicorn rag_mvp.main:app --reload
-```
-
-In a second Terminal window, submit an English query:
-
-```bash
-curl -s http://127.0.0.1:8000/retrieval/search \
-  -H 'Content-Type: application/json' \
-  -d '{"query":"How many weeks of parental leave are available?","top_k":3}' \
-  | python -m json.tool
-```
-
-The response should return `employee_handbook.md` as the highest-ranked source and include the
-passage stating that eligible employees receive sixteen weeks of paid parental leave. A Chinese
-query can be tested with:
-
-```bash
-curl -s http://127.0.0.1:8000/retrieval/search \
-  -H 'Content-Type: application/json' \
-  -d '{"query":"员工有多少周育儿假？","top_k":3}' \
-  | python -m json.tool
-```
-
-Optional request fields are `top_k` (1–20, default 5) and `score_threshold` (-1.0–1.0, default
-0.3). The response contains retrieved evidence only: chunk text, similarity score, source file,
-page number, language, and extraction method.
-
-### Retrieval modes and evaluation
-
-Retrieval behavior is configuration-driven and does not require a code change:
-
-```dotenv
-RETRIEVAL_MODE=hybrid
-RETRIEVAL_CANDIDATE_K=10
-RETRIEVAL_RERANKER_ENABLED=false
-```
-
-- `vector_only` uses multilingual dense embeddings and Qdrant cosine search.
-- `hybrid` combines dense results with an in-memory bilingual BM25 index using reciprocal-rank
-  fusion.
-- Enabling the reranker applies a deterministic bilingual lexical-overlap refinement to the fused
-  candidates. It requires no additional model download.
-
-Run the reproducible three-way comparison with:
-
-```bash
-source .venv/bin/activate
-rag-evaluate \
-  --dataset evals/retrieval_cases.json \
-  --output evals/reports/retrieval_baseline \
-  --top-k 3
-```
-
-The evaluator compares vector-only, hybrid, and hybrid+rerank using Hit@k, MRR, rank-aware context
-precision, out-of-scope refusal accuracy, and p50/p95 retrieval latency. It writes JSON details, a
-CSV summary, and a Markdown report. The included 12-case dataset covers English, Chinese, OCR,
-compliance, architecture, and out-of-scope queries.
-
-Metric definitions:
-
-- **Hit@k:** fraction of answerable queries with an expected source in the first `k` results.
-- **MRR:** mean reciprocal rank of the first expected source.
-- **Context precision:** average precision at the ranks containing expected sources, averaged over
-  answerable queries; this rewards placing relevant context before irrelevant context.
-- **Refusal accuracy:** fraction of labeled out-of-scope queries that return no context above the
-  confidence threshold.
-- **p50/p95 latency:** median and 95th-percentile local retrieval time, excluding generation.
-
-The current local result recommends hybrid without reranking: both hybrid configurations improved
-Hit@3 and context precision from `0.90` to `1.00` and retained `1.00` refusal accuracy, while plain
-hybrid was slightly faster in this run. Reranking remains configurable for evaluation on a larger
-corpus. See `evals/reports/retrieval_baseline/report.md` for the comparison and limitations.
-
-## Test grounded question answering
-
-The `POST /qa` endpoint connects vector retrieval to a free local model served by Ollama. It
-answers only from retrieved context, cites numbered passages, refuses before calling the LLM when
-no context passes the retrieval threshold, and reports model, token usage, and
-retrieval/generation timings.
-
-Install Ollama, start it, and download the bilingual Qwen3 model once:
+Install Ollama from [ollama.com](https://ollama.com), then download the pinned model:
 
 ```bash
 ollama pull qwen3:4b-instruct-2507-q4_K_M
 ```
 
-Configure `.env` for local generation with no per-call API charge:
+If Ollama is not already running as a background application, start it in a separate Terminal:
 
-```dotenv
-LLM_MODEL=qwen3:4b-instruct-2507-q4_K_M
-LLM_MAX_OUTPUT_TOKENS=256
-OLLAMA_BASE_URL=http://127.0.0.1:11434
-OLLAMA_TIMEOUT_SECONDS=120
+```bash
+ollama serve
 ```
 
-Ollama must be running while the RAG API handles `/qa` requests. Local generation avoids provider
-charges, but uses the Mac's CPU, GPU, memory, and electricity and may be slower or less accurate
-than a hosted model. The service uses the dedicated non-thinking Instruct model and also sends
-`think: false` to prevent reasoning traces from appearing in answers.
+Confirm that it is available:
 
-Start the API:
+```bash
+curl -s http://127.0.0.1:11434/api/tags
+```
+
+### Ingest the sample documents
+
+The repository contains five sample documents under `documents/`. To test native text extraction
+without OCR:
+
+```bash
+INGEST_OCR_ENABLED=false .venv/bin/rag-ingest ./documents
+```
+
+The scanned PDF will be reported as a failure, while the other four documents will be indexed. To
+test the complete OCR path, install Tesseract and confirm both languages are present:
+
+```bash
+tesseract --list-langs | grep -E 'eng|chi_sim'
+INGEST_OCR_ENABLED=true INGEST_OCR_LANGUAGES=eng+chi_sim \
+  .venv/bin/rag-ingest ./documents
+```
+
+For the included corpus, a successful complete run reports five ingested files, zero failures,
+eight chunks, five native pages, and one OCR page. Run the command twice: identical counts on the
+second run confirm idempotent replacement rather than duplicate storage.
+
+The first run downloads the multilingual embedding model to `data/models/`. Qdrant persists the
+index under `data/qdrant/`. Because embedded Qdrant permits one owning process, stop the API before
+running ingestion or use Qdrant server in a multi-process deployment.
+
+### Run the complete automated validation
+
+With Ollama running and the sample documents already ingested:
+
+```bash
+./scripts/evaluate.sh
+```
+
+The script automatically uses `.venv/bin/python`, starts a temporary cache-disabled API on port
+8010, and then:
+
+1. runs all unit tests;
+2. runs Ruff static checks;
+3. compares vector-only, hybrid, and hybrid+rerank retrieval;
+4. evaluates bilingual QA quality and refusal behavior;
+5. sends five distinct requests concurrently with a cold cache;
+6. creates an operations CSV; and
+7. stops the temporary API.
+
+A successful run ends with `passes: true`. Important thresholds are faithfulness `>= 0.85`, answer
+compliance `>= 0.90`, style consistency `>= 0.85`, refusal appropriateness `>= 0.90`, and at least
+90% of concurrent QA requests within 10 seconds.
+
+Results are written to:
+
+- `evals/reports/retrieval_latest/`
+- `evals/reports/qa_latest/`
+- `artifacts/operations.csv`
+- `artifacts/qa_validation_events.jsonl`
+
+### Test the API manually
+
+Start the service:
 
 ```bash
 source .venv/bin/activate
 uvicorn rag_mvp.main:app --reload
 ```
 
-In a second Terminal, ask a grounded question:
+Check health:
+
+```bash
+curl -s http://127.0.0.1:8000/health | python3 -m json.tool
+```
+
+Test retrieval without calling the LLM:
+
+```bash
+curl -s http://127.0.0.1:8000/retrieval/search \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"How many weeks of parental leave are available?","top_k":3}' \
+  | python3 -m json.tool
+```
+
+Test grounded English and Chinese answers:
 
 ```bash
 curl -s http://127.0.0.1:8000/qa \
   -H 'Content-Type: application/json' \
   -d '{"query":"How many weeks of parental leave are available?","top_k":3}' \
   | python3 -m json.tool
+
+curl -s http://127.0.0.1:8000/qa \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"员工有多少周育儿假？","top_k":3}' \
+  | python3 -m json.tool
 ```
 
-The answer should state sixteen weeks and cite `[1]`; the first source should be
-`employee_handbook.md`. Automated tests use fake retrieval and Ollama clients, so
-`python -m pytest -q` does not require Ollama to be running.
-
-### Why the MVP uses a free local model
-
-The MVP uses the pinned `qwen3:4b-instruct-2507-q4_K_M` model through Ollama because:
-
-- **Zero API cost:** local inference has **$0 API cost per 1,000 calls**, which enables repeated
-  development and evaluation without consuming a hosted-model budget.
-- **Privacy:** retrieved internal document text remains on the developer's machine instead of being
-  sent to an external model provider.
-- **Bilingual support:** Qwen3 supports the English and Chinese corpus used by this project.
-- **Practical local size:** the quantized 4B model is small enough for MVP development on a modern
-  Mac while still producing grounded answers in roughly one second for the included sample corpus.
-- **Reproducibility:** the full model tag is pinned so the shorter `qwen3:4b` alias cannot silently
-  change to a different or thinking-only build.
-
-The trade-offs are local CPU/GPU and memory usage, machine-dependent latency, and potentially lower
-answer quality than larger hosted models. The service records model name, latency, and token usage
-so this choice can be evaluated quantitatively and reconsidered for production.
-
-## Service hardening and multi-turn QA
-
-The `/qa` request accepts an optional `session_id`. The service keeps the last three redacted turns
-in process and uses the most recent turn to improve follow-up retrieval. This is intentionally an
-MVP store: production should move encrypted conversation state to a shared store with retention and
-deletion policies.
-
-Runtime controls include:
-
-- deterministic English/Chinese prompt-injection refusal before retrieval or generation;
-- email, phone, and US SSN redaction from model input, answer, citations, and conversation history;
-- a bounded five-minute process-local answer cache; requests containing PII and redacted answers
-  are never cached;
-- a post-generation grounding gate that validates citation IDs and context support, refusing output
-  below `QA_GROUNDING_MIN_SUPPORT`;
-- structured JSONL events containing request/trace/span IDs, retrieval/model choices, tokens,
-  grounding score, latency, cache, refusal, and PII signals without raw prompts or answers; and
-- configuration-only retrieval, reranker, model, cache, history, and logging changes through `.env`.
-
-Example multi-turn requests:
+Test a multi-turn conversation by reusing `session_id`:
 
 ```bash
-curl -s http://127.0.0.1:8000/qa -H 'Content-Type: application/json' \
+curl -s http://127.0.0.1:8000/qa \
+  -H 'Content-Type: application/json' \
   -d '{"query":"How many weeks of parental leave are available?","session_id":"demo-1"}'
-curl -s http://127.0.0.1:8000/qa -H 'Content-Type: application/json' \
+
+curl -s http://127.0.0.1:8000/qa \
+  -H 'Content-Type: application/json' \
   -d '{"query":"Who is eligible for it?","session_id":"demo-1"}'
 ```
 
-### One-command validation
+API documentation is available at `http://127.0.0.1:8000/docs`.
 
-With the virtual environment active and Ollama running:
+## 2. Flow design and key decisions
 
-```bash
-./scripts/evaluate.sh
+The system has two main flows: an offline ingestion flow and an online query flow. Keeping them
+separate lets documents be processed once while user queries remain fast.
+
+### Flow A: document ingestion
+
+```text
+Documents
+   -> file discovery
+   -> PDF/DOCX/TXT/Markdown parsing
+   -> page-level OCR fallback when native text is insufficient
+   -> bilingual-aware chunking
+   -> multilingual embeddings
+   -> Qdrant chunks, vectors, and metadata
 ```
 
-This starts an isolated cache-disabled validation API, runs unit tests, Ruff, the three retrieval
-configurations, QA quality evaluation, and a five-distinct-request/5-concurrent cold-cache load
-check. It writes the operations CSV and shuts down the temporary API automatically.
+Key design decisions:
 
-The QA evaluator uses the labeled bilingual dataset in `evals/qa_cases.json` and reports:
+- **Native extraction before OCR:** native text is faster and more accurate; OCR is used only for
+  text-poor PDF pages to control latency and extraction noise.
+- **Chinese/English-aware chunking:** Chinese text cannot rely on whitespace boundaries, so the
+  chunker uses punctuation-aware boundaries and overlap to preserve context in both languages.
+- **One multilingual embedding model:** the same model embeds Chinese and English documents and
+  queries, enabling cross-language retrieval without maintaining two indexes.
+- **Stable document and chunk IDs:** identifiers are derived deterministically, so rerunning
+  ingestion replaces a document's chunks instead of creating duplicates.
+- **Metadata preservation:** source path, filename, page, language, extraction method, content hash,
+  and chunk position support citations, debugging, and future incremental synchronization.
+- **Embedded Qdrant for the MVP:** it requires no extra service and makes local setup simple. A
+  Qdrant server is the production path for multiple API/worker processes and larger collections.
 
-- **Faithfulness:** fraction of non-stopword answer tokens present in cited passages; target
-  `>= 0.85`. This deterministic metric is reproducible but should later be supplemented by human or
-  claim-level judging for valid paraphrases.
-- **Answer compliance:** correct refusal label, all expected facts, and citations; target `>= 0.90`
-  (stricter than the original 80% requirement).
-- **Style consistency:** same language as the question, numbered citations, and no thinking trace;
-  target `>= 0.85`.
-- **Refusal appropriateness:** correct decision for answerable, out-of-scope, and injection cases;
-  target `>= 0.90`.
-- **Performance:** at least 90% of calls at or below 10 seconds with five concurrent requests.
+MVP ingestion is a manually triggered batch command because the immediate goal is validating
+parsing, OCR, chunking, embedding, and storage. In production, use source-system events, a durable
+queue, and parallel workers. Target 95% of ordinary document changes becoming searchable within 15
+minutes; urgent compliance updates should use a priority path. A separate nightly or weekly
+reconciliation detects missed updates and deletions without rescanning millions of files every 15
+minutes.
 
-Local Ollama has `$0` provider/API cost per 1,000 calls. Token counts are still recorded so a
-hosted replacement can calculate `(input tokens × input rate) + (output tokens × output rate)` for
-1,000 calls without changing the service contract.
+### Flow B: retrieval and grounded QA
 
-Generate an operational report independently with:
-
-```bash
-rag-ops-report --logs artifacts/qa_events.jsonl --output artifacts/operations.csv
+```text
+User query + optional session ID
+   -> prompt-injection check and PII redaction
+   -> recent redacted conversation context
+   -> vector-only or vector+BM25 hybrid retrieval
+   -> optional reranking and confidence threshold
+   -> early refusal when context is missing
+   -> local Ollama generation from numbered passages
+   -> citation and context-support validation
+   -> answer and citation PII redaction
+   -> response cache, structured event, and operations metrics
 ```
 
-It contains p50/p95 latency, total token usage, cache-hit rate, refusal rate, and imports the
-answer-compliance rate from the latest QA evaluation (or marks it `not_measured`). See
-`docs/log_field_dictionary.md`,
-`docs/sample_logs.jsonl`, and `evals/reports/issue_diagnosis.md` for the log contract, safe samples,
-and two before/after diagnoses with at least 10% improvement.
+Key design decisions:
 
-The recorded final run in `evals/reports/qa_latest/` passes the requested thresholds:
-faithfulness `0.870`, answer compliance `1.00`, style consistency `1.00`, refusal appropriateness
-`1.00`, and 100% of the six QA cases within 10 seconds. The five-distinct-request cold-cache load
-run used five concurrent clients, had zero cache hits, and passed with p95 `6.76s`. These results
-are evidence for this sample corpus
-and machine, not a production capacity guarantee; rerun the script after any corpus, prompt, model,
-or infrastructure change.
+- **Retrieval can be tested independently:** `/retrieval/search` isolates retrieval quality from
+  model variability, cost, and generation latency.
+- **Configurable strategies:** `RETRIEVAL_MODE` selects vector-only or hybrid search, while
+  `RETRIEVAL_RERANKER_ENABLED` changes reranking without a code deployment.
+- **Hybrid retrieval:** multilingual dense search handles semantic similarity; bilingual BM25
+  improves exact terminology and identifiers. Reciprocal-rank fusion combines their rankings.
+- **Early refusal:** out-of-scope or low-confidence queries stop before generation, reducing
+  hallucination risk and unnecessary model work.
+- **Grounding after generation:** every answer needs valid numbered citations and must meet
+  `QA_GROUNDING_MIN_SUPPORT`; otherwise the service returns `ungrounded_generation` guidance.
+- **Free local generation:** pinned `qwen3:4b-instruct-2507-q4_K_M` gives `$0` provider cost per
+  1,000 calls, keeps internal context local, supports Chinese and English, and runs on a modern Mac.
+  Its trade-offs are local compute usage and lower quality than larger hosted models.
+- **Bounded local state:** the MVP retains three redacted conversation turns and uses a TTL/LRU
+  cache. Production should use encrypted shared storage with explicit retention and deletion rules.
+- **Privacy-aware observability:** logs contain hashes, request/trace/span IDs, configuration,
+  tokens, decisions, grounding scores, and timings—not raw prompts, answers, or retrieved passages.
+- **Thread-safe initialization:** the retrieval and QA singletons are initialized under locks so
+  concurrent requests do not open multiple embedded-Qdrant clients.
 
-## Milestones
+Important configuration is documented in `.env.example`, including retrieval mode, reranking,
+model, cache, history, log destination, and grounding threshold.
 
-1. Document ingestion and metadata-preserving chunking
-2. Vector retrieval with a small evaluation dataset
-3. BM25 hybrid retrieval and optional reranking
-4. Grounded answer generation, citations, and refusal behavior
-5. Bilingual, safety, latency, cost, and reliability evaluation (implemented; run locally to record
-   machine-specific QA and load results)
+## 3. Milestones
+
+1. **Initial service foundation:** Python package, FastAPI application, health endpoint, tests, and
+   local configuration.
+2. **Bilingual ingestion:** native parsing, scanned-PDF OCR fallback, bilingual chunking,
+   multilingual embeddings, metadata, and idempotent Qdrant storage.
+3. **Independent retrieval:** vector search endpoint and labeled bilingual retrieval dataset.
+4. **Hybrid retrieval and reranking:** BM25 fusion, configurable reranking, and three-way
+   quantitative comparison.
+5. **Grounded generation:** local Ollama integration, citations, refusals, token usage, and
+   retrieval/generation latency.
+6. **Service hardening:** multi-turn context, prompt-injection checks, PII redaction, caching,
+   grounding validation, structured tracing, and thread-safe concurrency.
+7. **Reproducible evaluation:** one-command QA/retrieval/load validation, operations reporting,
+   before/after comparison, log dictionary, and issue-diagnosis evidence.
+
+## 4. Evidence that the MVP meets the requirements
+
+The numbers below come from the committed local reports. They demonstrate this sample corpus and
+machine, not production capacity. Rerun `./scripts/evaluate.sh` after any model, prompt, corpus,
+configuration, or infrastructure change.
+
+### Global constraints
+
+| Constraint | Implementation and evidence | Status |
+|---|---|---|
+| 90% of QA requests complete within 10 seconds | Five distinct cold-cache requests at concurrency 5: 100% within 10 seconds; p95 6.76 seconds. | Pass |
+| At least five concurrent requests on one instance | Cache-disabled five-client load test; thread-safe dependency initialization prevents duplicate Qdrant clients. | Pass |
+| Token-cost estimate per 1,000 calls | Local Ollama provider cost is `$0`; token usage is recorded. A hosted replacement can apply provider input/output rates to the same counters. | Pass |
+| Model selection and trade-offs | README documents bilingual capability, privacy, `$0` API cost, local latency/compute, size, reproducibility, and hosted-model quality trade-offs. | Pass |
+| RAG faithfulness >= 0.85 | Deterministic non-stopword answer-token support in cited passages: `0.870`. | Pass |
+| Context precision >= 0.70 | Hybrid and hybrid+rerank both measured `1.00`. | Pass |
+| Answer compliance >= 80% | Hardened evaluation measured `1.00`; it also exceeds the advanced 90% target. | Pass |
+| Style consistency >= 80% | Same-language response, citations, and no thinking trace measured `1.00`. | Pass |
+| Refusal appropriateness >= 80% | Labeled answerable, out-of-scope, and injection cases measured `1.00`. | Pass |
+| Structured logging and tracing | JSONL includes request/trace/span IDs, retrieval settings, model, refusal, cache, PII, grounding, tokens, and stage timings. | Pass |
+| Minimal injection defense and basic PII handling | CN/EN override patterns refuse before retrieval; email, phone, and US SSN patterns redact queries, answers, citations, history, and logs. | Pass for MVP |
+| Answers grounded to retrieved context | Prompt constraints plus post-generation citation-ID and lexical-support checks; unsupported output is refused. | Pass for MVP |
+
+### Functional requirements
+
+| Requirement | Evidence | Status |
+|---|---|---|
+| Vector-only and hybrid retrieval | `RETRIEVAL_MODE=vector_only` or `hybrid`. | Pass |
+| Reranker controlled without code changes | `RETRIEVAL_RERANKER_ENABLED=true/false`. | Pass |
+| Low-confidence, out-of-scope, and safety refusals with guidance | `no_relevant_context`, `safety_policy`, and `ungrounded_generation` responses provide next-step guidance. | Pass |
+| PII redaction in outputs and logs | Redaction covers generated answers and returned citation text; operational logs exclude raw content. | Pass for MVP |
+| Operations report | CSV contains p50/p95 latency, token usage, cache-hit rate, refusal rate, and answer-compliance rate. | Pass |
+
+### Non-functional and quantitative requirements
+
+| Requirement | Evidence | Status |
+|---|---|---|
+| Compare vector-only, hybrid, and hybrid+rerank | The 12-case report records Hit@3, MRR, context precision, refusal accuracy, and p50/p95 latency for all three. | Pass |
+| Evolvability | Retriever and generator interfaces plus environment configuration isolate strategy, model, cache, logging, and metric changes. | Pass |
+| Answer compliance >= 90% | `1.00`. | Pass |
+| Refusal appropriateness >= 90% | `1.00`. | Pass |
+| Style consistency >= 0.85 | `1.00`. | Pass |
+| Two diagnosed issues with >=10% post-fix improvement | Retrieval context precision improved `0.90 -> 1.00` (11.1% relative); pre-generation injection refusal improved `0.00 -> 1.00`. | Pass |
+
+### Evaluation definitions and artifacts
+
+- **Hit@k:** fraction of answerable queries with an expected source among the first `k` results.
+- **MRR:** mean reciprocal rank of the first expected source.
+- **Context precision:** average precision at ranks containing expected sources across answerable
+  queries.
+- **Faithfulness:** fraction of non-stopword answer tokens also present in cited passages. This is
+  reproducible but should be supplemented with claim-level human or semantic-entailment evaluation
+  before production.
+- **Answer compliance:** correct refusal decision or, for answered cases, required facts plus a
+  citation.
+- **Style consistency:** answer language matches the question, citations are numbered, and no
+  thinking trace is exposed.
+- **Refusal appropriateness:** refusal decision matches the answerable/out-of-scope/safety label.
+
+Committed evidence:
+
+- `evals/reports/retrieval_latest/report.md`
+- `evals/reports/qa_latest/report.md`
+- `evals/reports/qa_comparison.md`
+- `evals/reports/issue_diagnosis.md`
+- `evals/reports/issue_diagnosis_metrics.json`
+- `docs/log_field_dictionary.md`
+- `docs/sample_logs.jsonl`
+
+MVP limitations are deliberate: embedded Qdrant is single-process, conversation/cache state is
+in-memory, PII detection is regex-based, the grounding check is lexical rather than semantic, and
+the evaluation datasets are small. These boundaries should be replaced or expanded before a
+production launch.
+
+## Potential improvements
+
+- **Scale storage and shared state:** replace embedded Qdrant with Qdrant server and move the
+  in-process cache and conversation history to an encrypted shared store such as Redis. This
+  enables multiple API instances, persistence, backups, and horizontal scaling.
+- **Automate incremental ingestion:** process document create, update, and delete events through a
+  durable queue instead of manually rescanning the directory. Add priority handling for urgent
+  compliance changes and periodic reconciliation for missed events.
+- **Strengthen grounding and security:** replace lexical grounding with claim-level semantic
+  entailment, expand PII detection beyond regular expressions, and detect indirect prompt
+  injection inside retrieved documents.
+- **Expand evaluation coverage:** add more bilingual, multi-turn, OCR, adversarial, and
+  domain-specific cases. Run sustained cold-cache load tests to measure throughput, failure rate,
+  memory use, and model saturation on production-like hardware.
+- **Improve production operations:** add containerized deployment, CI/CD, readiness checks,
+  retries, circuit breakers, and OpenTelemetry export to a metrics and tracing platform. These
+  controls make model or database failures visible and allow graceful degradation.
